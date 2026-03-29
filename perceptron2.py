@@ -1,49 +1,52 @@
 #!/usr/bin/env python3
-"""Perceptron — single-layer and averaged perceptron."""
-import random, sys
+"""Perceptron classifier. Zero dependencies."""
 
 class Perceptron:
-    def __init__(self, n_features):
-        self.weights = [0.0]*n_features; self.bias = 0.0; self.errors = []
-    def predict(self, x):
-        return 1 if sum(w*xi for w,xi in zip(self.weights, x)) + self.bias > 0 else 0
-    def fit(self, X, y, epochs=100, lr=1.0):
-        for epoch in range(epochs):
-            errs = 0
-            for xi, yi in zip(X, y):
-                pred = self.predict(xi); err = yi - pred
-                if err != 0:
-                    errs += 1
-                    for j in range(len(self.weights)): self.weights[j] += lr * err * xi[j]
-                    self.bias += lr * err
-            self.errors.append(errs)
-            if errs == 0: break
-    def accuracy(self, X, y):
-        return sum(self.predict(x)==yi for x,yi in zip(X,y))/len(y)
+    def __init__(self, lr=0.1, epochs=100):
+        self.lr = lr; self.epochs = epochs; self.weights = []; self.bias = 0
 
-class AveragedPerceptron(Perceptron):
-    def fit(self, X, y, epochs=100, lr=1.0):
-        cached_w = [0.0]*len(self.weights); cached_b = 0.0; c = 1
-        for _ in range(epochs):
+    def fit(self, X, y):
+        d = len(X[0])
+        self.weights = [0.0]*d; self.bias = 0.0
+        for _ in range(self.epochs):
+            errors = 0
             for xi, yi in zip(X, y):
-                pred = self.predict(xi)
+                pred = self.predict_one(xi)
                 if pred != yi:
-                    for j in range(len(self.weights)):
-                        self.weights[j] += lr * (yi - pred) * xi[j]
-                        cached_w[j] += lr * c * (yi - pred) * xi[j]
-                    self.bias += lr * (yi - pred)
-                    cached_b += lr * c * (yi - pred)
-                c += 1
-        n = len(X) * epochs
-        self.weights = [w - cw/n for w, cw in zip(self.weights, cached_w)]
-        self.bias -= cached_b / n
+                    errors += 1
+                    update = self.lr * (yi - pred)
+                    for j in range(d): self.weights[j] += update * xi[j]
+                    self.bias += update
+            if errors == 0: break
+        return self
+
+    def predict_one(self, x):
+        return 1 if sum(w*xi for w, xi in zip(self.weights, x)) + self.bias >= 0 else 0
+
+    def predict(self, X):
+        return [self.predict_one(x) for x in X]
+
+    def score(self, X, y):
+        return sum(1 for p, t in zip(self.predict(X), y) if p == t) / len(y)
+
+class MulticlassPerceptron:
+    def __init__(self, lr=0.1, epochs=100):
+        self.lr = lr; self.epochs = epochs; self.classifiers = {}
+
+    def fit(self, X, y):
+        classes = list(set(y))
+        for c in classes:
+            binary_y = [1 if yi == c else 0 for yi in y]
+            self.classifiers[c] = Perceptron(self.lr, self.epochs).fit(X, binary_y)
+        return self
+
+    def predict_one(self, x):
+        scores = {c: sum(w*xi for w, xi in zip(p.weights, x))+p.bias for c, p in self.classifiers.items()}
+        return max(scores, key=scores.get)
+
+    def predict(self, X): return [self.predict_one(x) for x in X]
 
 if __name__ == "__main__":
-    random.seed(42); X, y = [], []
-    for _ in range(100):
-        x = [random.uniform(-5,5), random.uniform(-5,5)]
-        X.append(x); y.append(1 if x[0]*2+x[1]*3 > 0 else 0)
-    p = Perceptron(2); p.fit(X[:80], y[:80])
-    ap = AveragedPerceptron(2); ap.fit(X[:80], y[:80])
-    print(f"Perceptron: acc={p.accuracy(X[80:],y[80:])*100:.0f}%")
-    print(f"Averaged:   acc={ap.accuracy(X[80:],y[80:])*100:.0f}%")
+    X = [[0,0],[0,1],[1,0],[1,1]]; y = [0,1,1,1]  # OR gate
+    p = Perceptron().fit(X, y)
+    print(f"OR gate: {p.predict(X)}")
