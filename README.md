@@ -1,14 +1,9 @@
-# perceptron2
+# perceptron
 
-Perceptron binary classifier
+Perceptron and multi-layer perceptron. Single-file Python CLI, zero dependencies.
 
 ## Usage
 
 ```bash
-python3 perceptron2.py --help
+python3 perceptron2.py
 ```
-
-## Features
-
-- Zero dependencies (Python 3.8+)
-- Single file implementation
