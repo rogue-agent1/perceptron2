@@ -1,9 +1,14 @@
-# Perceptron & Adaline
+# perceptron2
 
-Perceptron & Adaline — zero-dependency Python implementation.
+Perceptron binary classifier
 
 ## Usage
 
 ```bash
-python3 perceptron2.py
+python3 perceptron2.py --help
 ```
+
+## Features
+
+- Zero dependencies (Python 3.8+)
+- Single file implementation

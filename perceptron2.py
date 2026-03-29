@@ -1,43 +1,32 @@
 #!/usr/bin/env python3
-"""Perceptron and Adaline (adaptive linear neuron)."""
-import sys, random
-
+"""perceptron2 - Perceptron classifier."""
+import sys,argparse,json,random
 class Perceptron:
-    def __init__(self, lr=0.01, epochs=100):
-        self.lr, self.epochs = lr, epochs
-    def fit(self, X, y):
-        self.w = [0.0]*len(X[0]); self.b = 0.0
-        for _ in range(self.epochs):
-            errors = 0
-            for xi, yi in zip(X, y):
-                pred = 1 if sum(w*x for w,x in zip(self.w, xi))+self.b >= 0 else 0
-                err = yi - pred
-                if err != 0:
-                    for j in range(len(self.w)): self.w[j] += self.lr*err*xi[j]
-                    self.b += self.lr*err; errors += 1
-            if errors == 0: break
-    def predict(self, X):
-        return [1 if sum(w*x for w,x in zip(self.w,xi))+self.b >= 0 else 0 for xi in X]
-
-class Adaline:
-    def __init__(self, lr=0.001, epochs=100):
-        self.lr, self.epochs = lr, epochs
-    def fit(self, X, y):
-        self.w = [0.0]*len(X[0]); self.b = 0.0
-        for _ in range(self.epochs):
-            for xi, yi in zip(X, y):
-                output = sum(w*x for w,x in zip(self.w, xi)) + self.b
-                err = yi - output
-                for j in range(len(self.w)): self.w[j] += self.lr*err*xi[j]
-                self.b += self.lr*err
-    def predict(self, X):
-        return [1 if sum(w*x for w,x in zip(self.w,xi))+self.b >= 0.5 else 0 for xi in X]
-
+    def __init__(self,n_features,lr=0.1):
+        self.weights=[0]*n_features;self.bias=0;self.lr=lr
+    def predict(self,x):return 1 if sum(w*xi for w,xi in zip(self.weights,x))+self.bias>0 else 0
+    def train(self,X,y,epochs=100):
+        history=[]
+        for ep in range(epochs):
+            errors=0
+            for xi,yi in zip(X,y):
+                pred=self.predict(xi)
+                if pred!=yi:
+                    for j in range(len(self.weights)):self.weights[j]+=self.lr*(yi-pred)*xi[j]
+                    self.bias+=self.lr*(yi-pred);errors+=1
+            history.append({"epoch":ep,"errors":errors})
+            if errors==0:break
+        return history
 def main():
-    X = [[0,0],[0,1],[1,0],[1,1]]; y_or = [0,1,1,1]
-    p = Perceptron(lr=0.1, epochs=10); p.fit(X, y_or)
-    print(f"Perceptron OR: {p.predict(X)}")
-    a = Adaline(lr=0.1, epochs=20); a.fit(X, y_or)
-    print(f"Adaline OR:    {a.predict(X)}")
-
-if __name__ == "__main__": main()
+    p=argparse.ArgumentParser(description="Perceptron")
+    p.add_argument("--task",choices=["and","or","nand"],default="and")
+    p.add_argument("--epochs",type=int,default=100)
+    args=p.parse_args()
+    X=[[0,0],[0,1],[1,0],[1,1]]
+    tasks={"and":[0,0,0,1],"or":[0,1,1,1],"nand":[1,1,1,0]}
+    y=tasks[args.task]
+    pc=Perceptron(2)
+    history=pc.train(X,y,args.epochs)
+    preds=[pc.predict(x) for x in X]
+    print(json.dumps({"task":args.task,"weights":[round(w,4) for w in pc.weights],"bias":round(pc.bias,4),"predictions":dict(zip(["00","01","10","11"],preds)),"epochs_needed":len(history),"converged":history[-1]["errors"]==0},indent=2))
+if __name__=="__main__":main()
